@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme {
+  --color-zymix-green: #86e01e;
+  --color-zymix-green-dark: #34c759;
+  --color-zymix-text: #0a0a0a;
+  --color-zymix-secondary: #8a8a8e;
+  --color-zymix-sent: #eaf7da;
+  --color-zymix-received: #f1f1f3;
+  --font-sans: Inter, system-ui, -apple-system, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: #f5f5f7;
+  color: var(--color-zymix-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 1.2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.35s ease-out forwards;
+}
+
+@keyframes backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-backdrop-in {
+  animation: backdrop-in 0.28s ease-out forwards;
+}
+
+.animate-sheet-up {
+  animation: sheet-up 0.34s cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+.animate-expand {
+  animation: slide-up 0.25s ease-out forwards;
+}

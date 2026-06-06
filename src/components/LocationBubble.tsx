@@ -1,0 +1,1 @@
+export { LocationBubble } from "./VerdictCard";
