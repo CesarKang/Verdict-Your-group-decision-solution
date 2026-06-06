@@ -1,3 +1,9 @@
+## Live Demo
+
+**https://verdict-your-group-decision-solutio.vercel.app/**
+
+Tap a message → ✦ @Verdict → submit preferences → get a group decision.
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
