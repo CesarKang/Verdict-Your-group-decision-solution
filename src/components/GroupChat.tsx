@@ -118,16 +118,9 @@ export function GroupChat({
           />
         )}
         <div className="relative z-0 h-full space-y-2 overflow-y-auto px-3 py-3">
-        {!flowActive && !videoDemoMode && (
+        {!flowActive && !videoDemoMode && !realtimePrivacyEnabled && (
           <p className="px-1 pb-1 text-center text-[11px] text-zymix-secondary">
-            {realtimePrivacyEnabled ? (
-              <>
-                {"\u2726"} Privacy: real-time chat reading is on {"\u2014"} Verdict can monitor
-                this group chat
-              </>
-            ) : (
-              <>Tap a message, then {"\u2726 @Verdict"} to decide from there</>
-            )}
+            Tap a message, then {"\u2726 @Verdict"} to decide from there
           </p>
         )}
 
@@ -160,8 +153,6 @@ export function GroupChat({
           );
         })}
 
-        {extraMessages}
-
         {dynamicMessages.map((message) =>
           message.kind === "hint" ? (
             <p
@@ -181,6 +172,8 @@ export function GroupChat({
             />
           ),
         )}
+
+        {extraMessages}
 
         {showThinking && (
           <ThinkingIndicator

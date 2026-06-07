@@ -333,15 +333,18 @@ export default function App() {
       !aiAgentProfile.allowRealtimeChatRead && next.allowRealtimeChatRead;
     setAiAgentProfile(next);
     if (turningOn) {
-      messageIdRef.current += 1;
-      setDynamicMessages((prev) => [
-        ...prev,
-        {
-          id: `dyn-${messageIdRef.current}`,
-          text: PRIVACY_HINT_TEXT,
-          kind: "hint" as const,
-        },
-      ]);
+      setDynamicMessages((prev) => {
+        if (prev.some((message) => message.kind === "hint")) return prev;
+        messageIdRef.current += 1;
+        return [
+          ...prev,
+          {
+            id: `dyn-${messageIdRef.current}`,
+            text: PRIVACY_HINT_TEXT,
+            kind: "hint" as const,
+          },
+        ];
+      });
     }
   }, [aiAgentProfile.allowRealtimeChatRead]);
 
