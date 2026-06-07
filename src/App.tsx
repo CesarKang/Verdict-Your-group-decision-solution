@@ -46,6 +46,8 @@ import {
 const READING_MS = 1400;
 const GENERATING_MS = 1400;
 const SPLIT_BILL_PATTERN = /@verdict\s+split\s+bill/i;
+const PRIVACY_HINT_TEXT =
+  "\u2726 Privacy: real-time chat reading is on \u2014 Verdict can monitor this group chat";
 
 type DemoPhase =
   | "idle"
@@ -326,6 +328,23 @@ export default function App() {
     }
   }, [messageInput, appendDynamicMessage, phase, verdict]);
 
+  const handleAiAgentProfileChange = useCallback((next: AIAgentProfile) => {
+    const turningOn =
+      !aiAgentProfile.allowRealtimeChatRead && next.allowRealtimeChatRead;
+    setAiAgentProfile(next);
+    if (turningOn) {
+      messageIdRef.current += 1;
+      setDynamicMessages((prev) => [
+        ...prev,
+        {
+          id: `dyn-${messageIdRef.current}`,
+          text: PRIVACY_HINT_TEXT,
+          kind: "hint" as const,
+        },
+      ]);
+    }
+  }, [aiAgentProfile.allowRealtimeChatRead]);
+
   const resetDemo = useCallback(() => {
     stopElapsedTimer();
     setPhase("idle");
@@ -599,13 +618,14 @@ export default function App() {
               onFeedbackBarConfirm={submitVideoFeedback}
               showFeedbackBar={videoDemoMode && phase === "preliminary"}
               feedbackBarHighlight={feedbackHighlight}
+              realtimePrivacyEnabled={aiAgentProfile.allowRealtimeChatRead}
             />
           </div>
 
           <AIAgentPanel
             open={aiAgentPanelOpen}
             profile={aiAgentProfile}
-            onChange={setAiAgentProfile}
+            onChange={handleAiAgentProfileChange}
             onClose={() => setAiAgentPanelOpen(false)}
           />
 

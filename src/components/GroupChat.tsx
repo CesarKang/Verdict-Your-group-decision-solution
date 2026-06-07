@@ -14,7 +14,7 @@ export type ChatLine = {
   id: string;
   text: string;
   isOwn?: boolean;
-  kind?: "text" | "system";
+  kind?: "text" | "system" | "hint";
   quote?: { authorName: string; text: string };
 };
 
@@ -49,6 +49,7 @@ type GroupChatProps = {
   onFeedbackBarConfirm?: () => void;
   showFeedbackBar?: boolean;
   feedbackBarHighlight?: boolean;
+  realtimePrivacyEnabled?: boolean;
 };
 
 export function GroupChat({
@@ -82,6 +83,7 @@ export function GroupChat({
   onFeedbackBarConfirm,
   showFeedbackBar = false,
   feedbackBarHighlight = false,
+  realtimePrivacyEnabled = false,
 }: GroupChatProps) {
   const memberNames = Object.fromEntries(
     groupProfile.members.map((member) => [member.id, member.name]),
@@ -118,7 +120,14 @@ export function GroupChat({
         <div className="relative z-0 h-full space-y-2 overflow-y-auto px-3 py-3">
         {!flowActive && !videoDemoMode && (
           <p className="px-1 pb-1 text-center text-[11px] text-zymix-secondary">
-            Tap a message, then {"\u2726 @Verdict"} to decide from there
+            {realtimePrivacyEnabled ? (
+              <>
+                {"\u2726"} Privacy: real-time chat reading is on {"\u2014"} Verdict can monitor
+                this group chat
+              </>
+            ) : (
+              <>Tap a message, then {"\u2726 @Verdict"} to decide from there</>
+            )}
           </p>
         )}
 
@@ -153,16 +162,25 @@ export function GroupChat({
 
         {extraMessages}
 
-        {dynamicMessages.map((message) => (
-          <MessageBubble
-            key={message.id}
-            text={message.text}
-            isOwn={message.isOwn}
-            authorName={message.isOwn ? memberNames[currentUserId] : undefined}
-            kind={message.kind ?? "text"}
-            quote={message.quote}
-          />
-        ))}
+        {dynamicMessages.map((message) =>
+          message.kind === "hint" ? (
+            <p
+              key={message.id}
+              className="px-1 py-1 text-center text-[11px] text-zymix-secondary"
+            >
+              {message.text}
+            </p>
+          ) : (
+            <MessageBubble
+              key={message.id}
+              text={message.text}
+              isOwn={message.isOwn}
+              authorName={message.isOwn ? memberNames[currentUserId] : undefined}
+              kind={message.kind ?? "text"}
+              quote={message.quote}
+            />
+          ),
+        )}
 
         {showThinking && (
           <ThinkingIndicator
