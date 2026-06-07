@@ -1,7 +1,9 @@
 import { Camera, Mic, Plus, Smile } from "lucide-react";
 import type { FormEvent, ReactNode } from "react";
+import { groupProfile } from "../data/groupProfile";
 import { seedMessages } from "../data/seedChat";
 import { AttachmentGrid } from "./AttachmentSheet";
+import { PreferenceFeedbackBar } from "./PreferenceFeedbackBar";
 import { MessageBubble } from "./MessageBubble";
 import { ThinkingIndicator, type LiveThinkingStatus, type ThinkingPhase } from "./ThinkingIndicator";
 import { VerdictMention } from "./VerdictMention";
@@ -13,6 +15,7 @@ export type ChatLine = {
   text: string;
   isOwn?: boolean;
   kind?: "text" | "system";
+  quote?: { authorName: string; text: string };
 };
 
 type GroupChatProps = {
@@ -39,6 +42,13 @@ type GroupChatProps = {
   attachmentOpen?: boolean;
   onCloseAttachment?: () => void;
   onOpenVerdictProfile?: () => void;
+  currentUserId?: string;
+  videoDemoMode?: boolean;
+  feedbackBarValue?: string;
+  onFeedbackBarChange?: (value: string) => void;
+  onFeedbackBarConfirm?: () => void;
+  showFeedbackBar?: boolean;
+  feedbackBarHighlight?: boolean;
 };
 
 export function GroupChat({
@@ -65,7 +75,18 @@ export function GroupChat({
   attachmentOpen = false,
   onCloseAttachment,
   onOpenVerdictProfile,
+  currentUserId = "fangzhe",
+  videoDemoMode = false,
+  feedbackBarValue = "",
+  onFeedbackBarChange,
+  onFeedbackBarConfirm,
+  showFeedbackBar = false,
+  feedbackBarHighlight = false,
 }: GroupChatProps) {
+  const memberNames = Object.fromEntries(
+    groupProfile.members.map((member) => [member.id, member.name]),
+  );
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     onSendMessage();
@@ -95,7 +116,7 @@ export function GroupChat({
           />
         )}
         <div className="relative z-0 h-full space-y-2 overflow-y-auto px-3 py-3">
-        {!flowActive && (
+        {!flowActive && !videoDemoMode && (
           <p className="px-1 pb-1 text-center text-[11px] text-zymix-secondary">
             Tap a message, then {"\u2726 @Verdict"} to decide from there
           </p>
@@ -119,7 +140,8 @@ export function GroupChat({
               >
                 <MessageBubble
                   text={message.text}
-                  isOwn={message.memberId === "fangzhe"}
+                  isOwn={message.memberId === currentUserId}
+                  authorName={memberNames[message.memberId]}
                   time={message.time}
                   kind={message.kind ?? "text"}
                   highlighted={isAnchor || isSelected}
@@ -136,7 +158,9 @@ export function GroupChat({
             key={message.id}
             text={message.text}
             isOwn={message.isOwn}
+            authorName={message.isOwn ? memberNames[currentUserId] : undefined}
             kind={message.kind ?? "text"}
+            quote={message.quote}
           />
         ))}
 
@@ -171,7 +195,7 @@ export function GroupChat({
           <input
             value={messageInput}
             onChange={(event) => onMessageInputChange(event.target.value)}
-            placeholder={attachmentOpen ? "Message" : 'Message\u2026 try "@Verdict split bill"'}
+            placeholder={attachmentOpen ? "Message" : 'Message\u2026 try "@Verdict"'}
             className="min-h-[40px] flex-1 rounded-full bg-[#F1F1F3] px-4 text-[15px] text-zymix-text outline-none placeholder:text-zymix-secondary focus:ring-2 focus:ring-zymix-green/40"
           />
           <Smile className="h-5 w-5 shrink-0 text-zymix-secondary" />
@@ -179,6 +203,15 @@ export function GroupChat({
           <Mic className="h-5 w-5 shrink-0 text-zymix-secondary" />
         </div>
       </form>
+
+      {showFeedbackBar && onFeedbackBarChange && onFeedbackBarConfirm && (
+        <PreferenceFeedbackBar
+          value={feedbackBarValue}
+          onChange={onFeedbackBarChange}
+          onConfirm={onFeedbackBarConfirm}
+          highlight={feedbackBarHighlight}
+        />
+      )}
 
       {attachmentOpen && onOpenVerdictProfile && (
         <div className="relative z-20 shrink-0">

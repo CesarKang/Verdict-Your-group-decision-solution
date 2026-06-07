@@ -38,7 +38,7 @@ export function normalizeModelForProvider(model: string, baseUrl: string): strin
 }
 
 export function friendlyLLMError(raw: string): string {
-  if (raw.includes('"code":"1211"') || raw.includes("?????")) {
+  if (raw.includes('"code":"1211"') || raw.includes("模型不存在")) {
     return "Model not found. For Zhipu use lowercase, e.g. glm-4-flash (not GLM-4).";
   }
   return raw.length > 220 ? `${raw.slice(0, 220)}...` : raw;

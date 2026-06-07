@@ -24,8 +24,6 @@ export function PreferenceCollectPanel({
 }: PreferenceCollectPanelProps) {
   if (!open) return null;
 
-  const allEmpty = fields.every(({ key }) => !preference[key].trim());
-
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end bg-black/30" onClick={onClose}>
       <div
@@ -51,12 +49,6 @@ export function PreferenceCollectPanel({
             Close
           </button>
         </div>
-
-        {allEmpty && (
-          <div className="mt-3 rounded-xl bg-[#F4FFE4] px-3 py-2 text-[12px] font-medium text-zymix-text">
-            No strong preference
-          </div>
-        )}
 
         <div className="mt-4 space-y-3">
           {fields.map(({ key, label, placeholder }) => (

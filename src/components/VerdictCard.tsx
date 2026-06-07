@@ -13,6 +13,8 @@ type VerdictCardProps = {
   onShareLocation: () => void;
   onReroll: () => void;
   showReroll?: boolean;
+  confirmLabel?: string;
+  hideSourceBadge?: boolean;
 };
 
 export function VerdictCard({
@@ -26,6 +28,8 @@ export function VerdictCard({
   onShareLocation,
   onReroll,
   showReroll = true,
+  confirmLabel = "Confirm",
+  hideSourceBadge = false,
 }: VerdictCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [personalPrefExpanded, setPersonalPrefExpanded] = useState(false);
@@ -53,7 +57,7 @@ export function VerdictCard({
                 Live AI{liveLatencyMs ? ` \u00b7 ${(liveLatencyMs / 1000).toFixed(1)}s` : ""}
               </span>
             )}
-            {source === "seed" && (
+            {source === "seed" && !hideSourceBadge && (
               <span className="rounded-full bg-[#F1F1F3] px-2 py-0.5 text-[10px] font-semibold text-zymix-secondary">
                 Demo seed
               </span>
@@ -166,7 +170,7 @@ export function VerdictCard({
                   : "bg-zymix-green text-zymix-text hover:brightness-95"
               }`}
             >
-              {confirmed ? "\u2713 Confirmed" : "Confirm"}
+              {confirmed ? "\u2713 Confirmed" : confirmLabel}
             </button>
             <button
               type="button"

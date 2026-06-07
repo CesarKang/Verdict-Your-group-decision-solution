@@ -31,6 +31,17 @@ import type {
   VerdictSource,
 } from "./lib/types";
 import type { StageInfo } from "./lib/coordinationStage";
+import { PreliminaryDirectionCard } from "./components/PreliminaryDirectionCard";
+import { preliminaryDirection, videoFinalVerdict } from "./data/prebakedVideo";
+import { scheduleVideoDemo } from "./lib/scheduleVideoDemo";
+import {
+  isVideoAutoplay,
+  isVideoDemoMode,
+  VIDEO_DEMO_RACHEL_PROFILE,
+  VIDEO_DEMO_USER_ID,
+  VIDEO_QUOTE_MESSAGE_ID,
+  VIDEO_TIMELINE,
+} from "./lib/videoDemo";
 
 const READING_MS = 1400;
 const GENERATING_MS = 1400;
@@ -39,9 +50,13 @@ const SPLIT_BILL_PATTERN = /@verdict\s+split\s+bill/i;
 type DemoPhase =
   | "idle"
   | "reading"
+  | "preliminary"
   | "collect-preference"
   | "generating"
   | "verdict";
+
+const videoDemoMode = isVideoDemoMode();
+const videoAutoplay = isVideoAutoplay();
 
 function sleep(ms: number) {
   return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -55,6 +70,8 @@ export default function App() {
   const [stageInfo, setStageInfo] = useState<StageInfo | null>(null);
   const [groupHabit, setGroupHabit] = useState<GroupHabit | null>(null);
   const [userPreference, setUserPreference] = useState<UserPreference>(emptyPreference);
+  const [feedbackBudget, setFeedbackBudget] = useState("");
+  const [feedbackHighlight, setFeedbackHighlight] = useState(false);
   const [messageInput, setMessageInput] = useState("");
   const [dynamicMessages, setDynamicMessages] = useState<ChatLine[]>([]);
   const [attachmentOpen, setAttachmentOpen] = useState(false);
@@ -104,13 +121,22 @@ export default function App() {
     }, 100);
   }, [stopElapsedTimer]);
 
-  const appendDynamicMessage = useCallback((text: string, isOwn = true) => {
-    messageIdRef.current += 1;
-    setDynamicMessages((prev) => [
-      ...prev,
-      { id: `dyn-${messageIdRef.current}`, text, isOwn, kind: "text" },
-    ]);
-  }, []);
+  const activeUserId = videoDemoMode ? VIDEO_DEMO_USER_ID : CURRENT_USER_ID;
+
+  const appendDynamicMessage = useCallback(
+    (
+      text: string,
+      isOwn = true,
+      quote?: { authorName: string; text: string },
+    ) => {
+      messageIdRef.current += 1;
+      setDynamicMessages((prev) => [
+        ...prev,
+        { id: `dyn-${messageIdRef.current}`, text, isOwn, kind: "text", quote },
+      ]);
+    },
+    [],
+  );
 
   const handleMessageSelect = useCallback(
     (messageId: string) => {
@@ -131,6 +157,11 @@ export default function App() {
       setConfirmed(false);
       setLiveError(undefined);
 
+      if (videoDemoMode) {
+        stopElapsedTimer();
+        return;
+      }
+
       if (verdictMode === "live") {
         startElapsedTimer();
         setLiveStatus("calling");
@@ -146,8 +177,22 @@ export default function App() {
       setLiveStatus("preparing");
       setPhase("collect-preference");
     },
-    [verdictMode, startElapsedTimer, stopElapsedTimer],
+    [verdictMode, startElapsedTimer, stopElapsedTimer, videoDemoMode],
   );
+
+  const showPreliminaryDirection = useCallback(() => {
+    const messageId = anchorMessageId ?? VIDEO_QUOTE_MESSAGE_ID;
+    const bundle = buildPreferenceBundle(
+      seedMessages,
+      messageId,
+      activeUserId,
+      emptyPreference(),
+      VIDEO_DEMO_RACHEL_PROFILE,
+    );
+    setGroupHabit(bundle.groupHabit);
+    setStageInfo(bundle.stage);
+    setPhase("preliminary");
+  }, [anchorMessageId, activeUserId]);
 
   const runFinalVerdict = useCallback(
     async (useAlt: boolean, preference: UserPreference, rerollReason?: RerollReason) => {
@@ -161,15 +206,32 @@ export default function App() {
       setLiveLatencyMs(undefined);
       setLiveModel(undefined);
 
+      const profile = videoDemoMode ? VIDEO_DEMO_RACHEL_PROFILE : aiAgentProfile;
       const bundle = buildPreferenceBundle(
         seedMessages,
         anchorMessageId,
-        CURRENT_USER_ID,
+        activeUserId,
         preference,
-        aiAgentProfile,
+        profile,
       );
       setGroupHabit(bundle.groupHabit);
       setStageInfo(bundle.stage);
+
+      if (videoDemoMode) {
+        stopElapsedTimer();
+        await sleep(GENERATING_MS);
+        setVerdict({
+          ...videoFinalVerdict,
+          moreInfo: {
+            ...videoFinalVerdict.moreInfo,
+            hardLimitsRespected: bundle.groupHabit.hardLimits,
+          },
+        });
+        setVerdictSource("seed");
+        setIsAltVerdict(false);
+        setPhase("verdict");
+        return;
+      }
 
       if (verdictMode === "live") {
         startElapsedTimer();
@@ -209,8 +271,25 @@ export default function App() {
       setPhase("verdict");
       setLiveStatus("preparing");
     },
-    [anchorMessageId, verdictMode, llmConfig, startElapsedTimer, stopElapsedTimer, aiAgentProfile],
+    [anchorMessageId, verdictMode, llmConfig, startElapsedTimer, stopElapsedTimer, aiAgentProfile, activeUserId, videoDemoMode],
   );
+
+  const submitVideoFeedback = useCallback(() => {
+    const preference = { ...emptyPreference(), budget: feedbackBudget };
+    setUserPreference(preference);
+    setFeedbackHighlight(false);
+    void runFinalVerdict(false, preference);
+  }, [feedbackBudget, runFinalVerdict]);
+
+  const sendVideoVerdictCommand = useCallback(() => {
+    const anchor = getVerdictAnchor(VIDEO_QUOTE_MESSAGE_ID);
+    appendDynamicMessage("@Verdict", true, {
+      authorName: anchor.authorName,
+      text: anchor.preview,
+    });
+    setMessageInput("");
+    void handleVerdictTrigger(VIDEO_QUOTE_MESSAGE_ID);
+  }, [appendDynamicMessage, handleVerdictTrigger]);
 
   const handlePreferenceSubmit = useCallback(() => {
     void runFinalVerdict(false, userPreference);
@@ -302,6 +381,12 @@ export default function App() {
       );
     }
 
+    if (phase === "preliminary") {
+      nodes.push(
+        <PreliminaryDirectionCard key="preliminary" verdict={preliminaryDirection} />,
+      );
+    }
+
     if (phase === "verdict" && verdict) {
       nodes.push(
         <VerdictCard
@@ -315,7 +400,9 @@ export default function App() {
           onConfirm={() => setConfirmed(true)}
           onShareLocation={() => setLocationShared(true)}
           onReroll={() => setShowRerollPicker(true)}
-          showReroll={!isAltVerdict}
+          showReroll={!isAltVerdict && !videoDemoMode}
+          confirmLabel={videoDemoMode ? "Confirm Plan" : "Confirm"}
+          hideSourceBadge={videoDemoMode}
         />,
       );
     }
@@ -373,6 +460,55 @@ export default function App() {
   ]);
 
   useEffect(() => {
+    if (!videoDemoMode) return;
+    setAiAgentProfile(VIDEO_DEMO_RACHEL_PROFILE);
+    setVerdictMode("seed");
+  }, []);
+
+  useEffect(() => {
+    if (!videoDemoMode || !videoAutoplay) return;
+
+    const showPreliminaryTimer = window.setTimeout(
+      showPreliminaryDirection,
+      VIDEO_TIMELINE.readingEnd,
+    );
+
+    const cleanup = scheduleVideoDemo({
+      highlightAnchor: () => {
+        setSelectedMessageId(VIDEO_QUOTE_MESSAGE_ID);
+        setAnchorMessageId(VIDEO_QUOTE_MESSAGE_ID);
+      },
+      setInput: setMessageInput,
+      sendVerdictCommand: sendVideoVerdictCommand,
+      setFeedback: (value) => {
+        setFeedbackBudget(value);
+        setFeedbackHighlight(true);
+      },
+      submitBudget: submitVideoFeedback,
+      confirmPlan: () => setConfirmed(true),
+      openSplitBill: () => {
+        appendDynamicMessage("@Verdict split bill", true);
+        setMessageInput("");
+        setSplitBillOpen(true);
+      },
+      requestSplitBill: () => {
+        setSplitBillOpen(false);
+        setSplitBillRequested(true);
+      },
+    });
+
+    return () => {
+      window.clearTimeout(showPreliminaryTimer);
+      cleanup();
+    };
+  }, [
+    videoAutoplay,
+    showPreliminaryDirection,
+    sendVideoVerdictCommand,
+    submitVideoFeedback,
+  ]);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setAttachmentOpen(false);
@@ -398,6 +534,7 @@ export default function App() {
     <div className="relative">
       <PhoneFrame>
         <div className="relative flex min-h-0 flex-1 flex-col">
+          {!videoDemoMode && (
           <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between bg-white/90 px-4 py-2 backdrop-blur">
             <div className="flex items-center gap-2">
               <span className="text-[13px] font-black tracking-[0.18em] text-zymix-text">ZYMIX</span>
@@ -425,8 +562,9 @@ export default function App() {
               </button>
             </div>
           </div>
+          )}
 
-          <div className="flex min-h-0 flex-1 flex-col pt-10">
+          <div className={`flex min-h-0 flex-1 flex-col ${videoDemoMode ? "" : "pt-10"}`}>
             <GroupChat
               extraMessages={extraMessages}
               dynamicMessages={dynamicMessages}
@@ -454,6 +592,13 @@ export default function App() {
                 setAttachmentOpen(false);
                 setAiAgentPanelOpen(true);
               }}
+              currentUserId={activeUserId}
+              videoDemoMode={videoDemoMode}
+              feedbackBarValue={feedbackBudget}
+              onFeedbackBarChange={setFeedbackBudget}
+              onFeedbackBarConfirm={submitVideoFeedback}
+              showFeedbackBar={videoDemoMode && phase === "preliminary"}
+              feedbackBarHighlight={feedbackHighlight}
             />
           </div>
 
@@ -465,7 +610,7 @@ export default function App() {
           />
 
           <PreferenceCollectPanel
-            open={phase === "collect-preference"}
+            open={!videoDemoMode && phase === "collect-preference"}
             preference={userPreference}
             onChange={setUserPreference}
             onSubmit={handlePreferenceSubmit}
