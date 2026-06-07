@@ -436,6 +436,16 @@ export default function App() {
       );
     }
 
+    if (locationShared && selectedPlan) {
+      nodes.push(
+        <LocationBubble
+          key="location"
+          venueName={verdict?.verdict.name ?? selectedPlan.name}
+          area={selectedPlan.area}
+        />,
+      );
+    }
+
     if (splitBillRequested && verdict) {
       nodes.push(
         <GroupCollectionBubble
@@ -443,16 +453,6 @@ export default function App() {
           venueName={verdict.verdict.name}
           pricePerPerson={pricePerPerson}
           memberCount={baseGroupProfile.members.length}
-        />,
-      );
-    }
-
-    if (locationShared && selectedPlan) {
-      nodes.push(
-        <LocationBubble
-          key="location"
-          venueName={verdict?.verdict.name ?? selectedPlan.name}
-          area={selectedPlan.area}
         />,
       );
     }
